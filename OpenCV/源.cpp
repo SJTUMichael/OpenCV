@@ -47,9 +47,9 @@ CvPoint getNextMinLoc(IplImage *result, CvPoint minLoc, int maxVaule, int templa
 }
 int main()
 {
-	IplImage *src = cvLoadImage("C:\\Users\\Mark\\Desktop\\原图像.png", 0);
-	IplImage *srcResult = cvLoadImage("C:\\Users\\Mark\\Desktop\\原图像.png", 3);  //用来显示  
-	IplImage *templat = cvLoadImage("C:\\Users\\Mark\\Desktop\\模板.png", 0);
+	IplImage *src = cvLoadImage("原图像.png", 0);
+	IplImage *srcResult = cvLoadImage("原图像.png", 3);  //用来显示  
+	IplImage *templat = cvLoadImage("模板.png", 0);
 	IplImage *result;  // 用来存放结果  
 	if (!src || !templat)
 	{
