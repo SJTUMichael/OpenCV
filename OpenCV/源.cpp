@@ -78,7 +78,7 @@ int main()
 
 	// 计算下一个最小值  
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-	while(MyminValue < 0.8*minValue+0.2*maxValue)
+	while(MyminValue < 0.5*minValue+0.5*maxValue)
 	//for(int i = 6; i>0 ;i--)
 	{
 		cout << new_minLoc.x << " , " << new_minLoc.y << endl;
