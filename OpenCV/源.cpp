@@ -63,9 +63,11 @@ int main()
 		cout << "打开图片失败" << endl;
 		return 0;
 	}
-	DWORD start_time = GetTickCount();  //测试运行时间
+	double t = (double)getTickCount();;  //测试运行时间
 
 	copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
+
+
 
 	int srcW, srcH, templatW, templatH, resultH, resultW;
 	srcW = src.cols;
@@ -97,8 +99,8 @@ int main()
 		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
 	}
 
-	DWORD end_time = GetTickCount();
-	cout << "The run time is:" << (end_time - start_time) << "ms!" << endl;  //输出运行时间
+	t = (double)getTickCount() - t;
+	cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
 
 	cvNamedWindow("srcResult", 0);
 	cvNamedWindow("template", 0);
