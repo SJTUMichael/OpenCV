@@ -3,6 +3,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <stdio.h>
+#include<windows.h>
 
 using namespace std;
 using namespace cv;
@@ -33,11 +34,13 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 		endY = result.rows - 1;
 	}
 	int y, x;
+	float *p;
 	for (y = startY; y <= endY; y++)
 	{
+		p = result.ptr<float>(y);
 		for (x = startX; x <= endX; x++)
 		{
-			result.at<float>(y,x) = maxVaule;
+			p[x] = maxVaule;
 		}
 	}
 	// 然后得到下一个最小值并且返回  
@@ -69,6 +72,9 @@ int main()
 		cout << "模板不能比原图小" << endl;
 		return 0;
 	}
+
+	DWORD start_time = GetTickCount();  //测试运行时间
+
 	resultW = srcW - templatW + 1;
 	resultH = srcH - templatH + 1;
 	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
@@ -88,7 +94,9 @@ int main()
 		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
 	}
 
-	//cvRectangle(srcResult, new_minLoc, cvPoint(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
+	DWORD end_time = GetTickCount();
+	cout << "The run time is:" << (end_time - start_time) << "ms!" << endl;  //输出运行时间
+
 	cvNamedWindow("srcResult", 0);
 	cvNamedWindow("template", 0);
 	imshow("srcResult", srcResult);
