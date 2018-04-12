@@ -3,7 +3,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <stdio.h>
-#include<windows.h>
+#include <windows.h>
 
 using namespace std;
 using namespace cv;
@@ -52,16 +52,21 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 }
 int main()
 {
-	Mat src = imread("原图像.png", 0);
-	Mat srcResult = imread("原图像.png", 3);  //用来显示  
+	Mat src0 = imread("原图像.png", 0);
+	Mat srcResult = imread("原图像.png", 1);  //用来显示  
 	Mat templat = imread("模板.png", 0);
+	Mat src;
 	Mat result;// 用来存放结果  
 
-	if (src.empty() || templat.empty())
+	if (src0.empty() || templat.empty())
 	{
 		cout << "打开图片失败" << endl;
 		return 0;
 	}
+	DWORD start_time = GetTickCount();  //测试运行时间
+
+	copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
+
 	int srcW, srcH, templatW, templatH, resultH, resultW;
 	srcW = src.cols;
 	srcH = src.rows;
@@ -73,8 +78,6 @@ int main()
 		return 0;
 	}
 
-	DWORD start_time = GetTickCount();  //测试运行时间
-
 	resultW = srcW - templatW + 1;
 	resultH = srcH - templatH + 1;
 	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
@@ -82,15 +85,15 @@ int main()
 	double minValue, maxValue;
 	Point minLoc, maxLoc;
 	minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
-	rectangle(srcResult, minLoc, cvPoint(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
+	rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
 	Point new_minLoc;
 
 	// 计算下一个最小值  
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-	while(result.at<float>(new_minLoc.y, new_minLoc.x) < 0.5*minValue+0.5*maxValue)
+	while(result.at<float>(new_minLoc.y, new_minLoc.x) < 0.6*minValue+0.4*maxValue)
 	{
 		cout << new_minLoc.y << " , " << new_minLoc.x << endl;
-		rectangle(srcResult, new_minLoc, cvPoint(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
+		rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
 		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
 	}
 
