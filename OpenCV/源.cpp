@@ -3,8 +3,8 @@
 #include "cxcore.h"  
 #include "highgui.h"  
 using namespace std;
+using namespace cv;
 
-double MyminValue;
 
 CvPoint getNextMinLoc(IplImage *result, CvPoint minLoc, int maxVaule, int templatW, int templatH)
 {
@@ -41,7 +41,7 @@ CvPoint getNextMinLoc(IplImage *result, CvPoint minLoc, int maxVaule, int templa
 	// 然后得到下一个最小值并且返回  
 	double new_minVaule, new_maxValue;
 	CvPoint new_minLoc, new_maxLoc;
-	cvMinMaxLoc(result, &MyminValue, &new_maxValue, &new_minLoc, &new_maxLoc);
+	cvMinMaxLoc(result, &new_minVaule, &new_maxValue, &new_minLoc, &new_maxLoc);
 	return new_minLoc;
 
 }
@@ -78,10 +78,9 @@ int main()
 
 	// 计算下一个最小值  
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-	while(MyminValue < 0.5*minValue+0.5*maxValue)
-	//for(int i = 6; i>0 ;i--)
+	while(cvGetReal2D(result, new_minLoc.y, new_minLoc.x) < 0.5*minValue+0.5*maxValue)
 	{
-		cout << new_minLoc.x << " , " << new_minLoc.y << endl;
+		cout << new_minLoc.y << " , " << new_minLoc.x << endl;
 		cvRectangle(srcResult, new_minLoc, cvPoint(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
 		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
 	}
