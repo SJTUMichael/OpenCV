@@ -48,64 +48,68 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 	Point new_minLoc, new_maxLoc;
 	minMaxLoc(result, &new_minVaule, &new_maxValue, &new_minLoc, &new_maxLoc, Mat());
 	return new_minLoc;
-
 }
+
 int main()
-{
-	Mat src0 = imread("原图像.png", 0);
-	Mat srcResult = imread("原图像.png", 1);  //用来显示  
-	Mat templat = imread("模板.png", 0);
-	Mat src;
-	Mat result;// 用来存放结果  
+{	Mat src0, srcResult, templat, src, result; // result用来存放结果
 
-	if (src0.empty() || templat.empty())
+	for (int i = 6; i > 0; --i)
 	{
-		cout << "打开图片失败" << endl;
-		return 0;
+
+		src0 = imread("原图像.png", 0);
+		srcResult = imread("原图像.png", 1);  //用来显示 
+		templat = imread("模板.png", 0);
+
+		if (src0.empty() || templat.empty())
+		{
+			cout << "打开图片失败" << endl;
+			return 0;
+		}
+
+		double t = (double)getTickCount();;  //测试运行时间
+
+		copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
+
+		t = (double)getTickCount() - t;
+		cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
+
+		int srcW, srcH, templatW, templatH, resultH, resultW;
+		srcW = src.cols;
+		srcH = src.rows;
+		templatW = templat.cols;
+		templatH = templat.rows;
+		if (srcW < templatW || srcH < templatH)
+		{
+			cout << "模板不能比原图小" << endl;
+			return 0;
+		}
+
+		resultW = srcW - templatW + 1;
+		resultH = srcH - templatH + 1;
+		result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
+		matchTemplate(src, templat, result, CV_TM_SQDIFF);
+		double minValue, maxValue;
+		Point minLoc, maxLoc;
+		minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+		rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
+		Point new_minLoc;
+
+		// 计算下一个最小值  
+		new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
+		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.8*minValue + 0.2*maxValue)
+		{
+			cout << new_minLoc.y << " , " << new_minLoc.x << endl;
+			rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
+			new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
+		}
+
+		cvNamedWindow("srcResult", 0);
+		cvNamedWindow("template", 0);
+		imshow("srcResult", srcResult);
+		imshow("template", templat);
+		
 	}
-	double t = (double)getTickCount();;  //测试运行时间
 
-	copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
-
-
-
-	int srcW, srcH, templatW, templatH, resultH, resultW;
-	srcW = src.cols;
-	srcH = src.rows;
-	templatW = templat.cols;
-	templatH = templat.rows;
-	if (srcW < templatW || srcH < templatH)
-	{
-		cout << "模板不能比原图小" << endl;
-		return 0;
-	}
-
-	resultW = srcW - templatW + 1;
-	resultH = srcH - templatH + 1;
-	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
-	matchTemplate(src, templat, result, CV_TM_SQDIFF);
-	double minValue, maxValue;
-	Point minLoc, maxLoc;
-	minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
-	rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
-	Point new_minLoc;
-
-	// 计算下一个最小值  
-	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-	while(result.at<float>(new_minLoc.y, new_minLoc.x) < 0.6*minValue+0.4*maxValue)
-	{
-		cout << new_minLoc.y << " , " << new_minLoc.x << endl;
-		rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
-		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
-	}
-
-	t = (double)getTickCount() - t;
-	cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
-
-	cvNamedWindow("srcResult", 0);
-	cvNamedWindow("template", 0);
-	imshow("srcResult", srcResult);
-	imshow("template", templat);
 	cvWaitKey(0);
 
 	return 0;
