@@ -51,14 +51,14 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 }
 
 int main()
-{	Mat src0, srcResult, templat, src, result; // result用来存放结果
+{	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 
 	for (int i = 6; i > 0; --i)
 	{
 
-		src0 = imread("原图像.png", 0);
-		srcResult = imread("原图像.png", 1);  //用来显示 
-		templat = imread("模板.png", 0);
+		src0 = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\1.png", 0);
+		//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
+		templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
 
 		if (src0.empty() || templat.empty())
 		{
@@ -68,7 +68,8 @@ int main()
 
 		double t = (double)getTickCount();;  //测试运行时间
 
-		copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
+		copyMakeBorder(src0, src, 0, 0, templat.cols, templat.cols, BORDER_CONSTANT, Scalar(0)); //扩展待匹配的图像，本批图像工件从左向右进入，所以扩展图像左右
+		srcResult = src.clone(); //查看结果的图像
 
 		t = (double)getTickCount() - t;
 		cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
@@ -78,7 +79,7 @@ int main()
 		srcH = src.rows;
 		templatW = templat.cols;
 		templatH = templat.rows;
-		if (srcW < templatW || srcH < templatH)
+		if (srcW < templatW || srcH < templatH) 
 		{
 			cout << "模板不能比原图小" << endl;
 			return 0;
@@ -86,12 +87,15 @@ int main()
 
 		resultW = srcW - templatW + 1;
 		resultH = srcH - templatH + 1;
-		result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
-		matchTemplate(src, templat, result, CV_TM_SQDIFF);
+		result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）
+		matchTemplate(src, templat, result, CV_TM_SQDIFF);  //核心匹配函数
+
 		double minValue, maxValue;
 		Point minLoc, maxLoc;
+
 		minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
 		rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
+
 		Point new_minLoc;
 
 		// 计算下一个最小值  
