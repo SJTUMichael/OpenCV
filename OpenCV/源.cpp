@@ -52,27 +52,29 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 
 int main()
 {	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
+	char filename[100];
 
-	for (int i = 6; i > 0; --i)
+	for (unsigned int i = 0; i < 13; ++i)
 	{
-
-		src0 = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\1.png", 0);
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data5\\%d.png", i);
+		src0 = imread(filename, 0);
 		//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-		templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
+		templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data5\\mold\\mold.png", 0);
 
 		if (src0.empty() || templat.empty())
 		{
 			cout << "打开图片失败" << endl;
+			cvWaitKey(0);
 			return 0;
 		}
 
-		double t = (double)getTickCount();;  //测试运行时间
+		//double t = (double)getTickCount();;  //测试运行时间
 
 		copyMakeBorder(src0, src, 0, 0, templat.cols, templat.cols, BORDER_CONSTANT, Scalar(0)); //扩展待匹配的图像，本批图像工件从左向右进入，所以扩展图像左右
 		srcResult = src.clone(); //查看结果的图像
 
-		t = (double)getTickCount() - t;
-		cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
+		//t = (double)getTickCount() - t;
+		//cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
 
 		int srcW, srcH, templatW, templatH, resultH, resultW;
 		srcW = src.cols;
@@ -82,6 +84,7 @@ int main()
 		if (srcW < templatW || srcH < templatH) 
 		{
 			cout << "模板不能比原图小" << endl;
+			cvWaitKey(0);
 			return 0;
 		}
 
@@ -94,22 +97,23 @@ int main()
 		Point minLoc, maxLoc;
 
 		minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+		if (minValue > 2e+8) continue; //跳过没有模板的图片
+		cout << result.at<float>(minLoc.y, minLoc.x) << endl;
 		rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
 
 		Point new_minLoc;
 
 		// 计算下一个最小值  
 		new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.8*minValue + 0.2*maxValue)
+		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 1.5*minValue)
 		{
-			cout << new_minLoc.y << " , " << new_minLoc.x << endl;
+			cout << result.at<float>(new_minLoc.y, new_minLoc.x) << ";" << endl;
 			rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
 			new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
 		}
 
-		cvNamedWindow("srcResult", 0);
-		cvNamedWindow("template", 0);
-		imshow("srcResult", srcResult);
+
+		imshow(filename, srcResult);
 		imshow("template", templat);
 		
 	}
