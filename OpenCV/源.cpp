@@ -54,7 +54,7 @@ int main()
 {	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 
-	for (unsigned int i = 0; i < 13; ++i)
+	for (unsigned int i = 0; i <= 12; ++i)
 	{
 		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data5\\%d.png", i);
 		src0 = imread(filename, 0);
@@ -91,13 +91,13 @@ int main()
 		resultW = srcW - templatW + 1;
 		resultH = srcH - templatH + 1;
 		result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）
-		matchTemplate(src, templat, result, CV_TM_SQDIFF);  //核心匹配函数
+		matchTemplate(src, templat, result, CV_TM_SQDIFF_NORMED);  //核心匹配函数
 
 		double minValue, maxValue;
 		Point minLoc, maxLoc;
 
 		minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
-		if (minValue > 2e+8) continue; //跳过没有模板的图片
+		if (minValue > 0.5) continue; //跳过没有模板的图片
 		cout << result.at<float>(minLoc.y, minLoc.x) << endl;
 		rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
 
@@ -105,7 +105,7 @@ int main()
 
 		// 计算下一个最小值  
 		new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 1.5*minValue)
+		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.8*minValue+0.2*maxValue)
 		{
 			cout << result.at<float>(new_minLoc.y, new_minLoc.x) << ";" << endl;
 			rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
@@ -115,6 +115,7 @@ int main()
 
 		imshow(filename, srcResult);
 		imshow("template", templat);
+		imshow("result", result);
 		
 	}
 
