@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include<vector>
 #include <stdio.h>
 #include <windows.h>
 
@@ -17,22 +18,14 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 	int startY = minLoc.y - templatH;
 	int endX = minLoc.x + templatW;
 	int endY = minLoc.y + templatH;
-	if (startX < 0)
-	{
-		startX = 0;
-	}
-	if (startY < 0)
-	{
-		startY = 0;
-	}
-	if (endX > result.cols - 1)
-	{
-		endX = result.cols - 1;
-	}
-	if (endY > result.rows - 1)
-	{
-		endY = result.rows - 1;
-	}
+	if (startX < 0) startX = 0;
+
+	if (startY < 0) startY = 0;
+
+	if (endX > result.cols - 1) endX = result.cols - 1;
+
+	if (endY > result.rows - 1)	endY = result.rows - 1;
+
 	int y, x;
 	float *p;
 	for (y = startY; y <= endY; y++)
@@ -50,67 +43,122 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 	return new_minLoc;
 }
 
-int main()
-{	Mat src0, srcResult, templat, src, result; // result用来存放结果
-
-	for (int i = 6; i > 0; --i)
+bool AddPoint(vector<Point2i> &TargetPoint, Point newPoint, int templatW, int templatH)
+{
+	for (int j = TargetPoint.size() - 1; j >= 0; --j)//去掉相邻点（目标很靠近边界时,完整和不完整匹配都会响应）
 	{
+		if (abs(TargetPoint[j].x - newPoint.x) < templatW && abs(TargetPoint[j].y - newPoint.y) < templatH) //与的关系
+			return 0;
+	}
 
-		src0 = imread("原图像.png", 0);
-		srcResult = imread("原图像.png", 1);  //用来显示 
-		templat = imread("模板.png", 0);
+	TargetPoint.push_back(newPoint);
+	return 1;
+}
 
-		if (src0.empty() || templat.empty())
+bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point offset)  //找到返回1，没找到返回0
+{
+	if (src.cols < templat.cols || src.rows < templat.rows)
+	{
+		cout << "模板不能比原图小" << endl;
+		cvWaitKey(0);
+		return 0;
+	}
+
+	Mat result;
+	int resultW, resultH;
+	resultW = src.cols - templat.cols + 1;
+	resultH = src.rows - templat.rows + 1;
+
+	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）
+	matchTemplate(src, templat, result, CV_TM_SQDIFF_NORMED);  //核心匹配函数
+
+	double minValue, maxValue;
+	Point minLoc, maxLoc;
+
+	minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
+	if (minValue > 0.2) return 0; //没找到
+
+	//TargetPoint.push_back(minLoc+offset);
+	AddPoint(TargetPoint, minLoc + offset, templat.cols, templat.rows);
+
+	Point new_minLoc;
+
+	// 计算下一个最小值  
+	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templat.cols, templat.rows);
+	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.9*minValue + 0.1*maxValue)
+	{
+		//TargetPoint.push_back(new_minLoc + offset);
+		AddPoint(TargetPoint, new_minLoc + offset, templat.cols, templat.rows);
+		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templat.cols, templat.rows);
+	}
+
+	return 1;
+}
+
+
+
+int main()
+{	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
+	char filename[100];
+	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
+
+	for (unsigned int i = 0; i <= 12;++i)
+	{
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data1\\%d.png", i);
+		src = imread(filename, 0);
+		
+		if (src.empty() || templat.empty())
 		{
 			cout << "打开图片失败" << endl;
+			cvWaitKey(0);
 			return 0;
 		}
 
-		double t = (double)getTickCount();;  //测试运行时间
+		//double t = (double)getTickCount();;  //测试运行时间
 
-		copyMakeBorder(src0, src, 0, templat.rows, 0, 0, BORDER_CONSTANT, Scalar(0));
+		//copyMakeBorder(src0, src, 0, 0, templat.cols, templat.cols, BORDER_CONSTANT, Scalar(0,0,0)); //扩展待匹配的图像，本批图像工件从左向右进入，所以扩展图像左右
+		srcResult = src.clone(); //查看结果的图像
+	
+		
+		vector<Point2i> TargetPoint;
+		Point minLoc;
 
-		t = (double)getTickCount() - t;
-		cout << "The run time is:" << (t * 1000 / getTickFrequency()) << "ms!" << endl;  //输出运行时间
+		MyTemplateMatch(src, templat, TargetPoint, Point(0,0));
+		
 
-		int srcW, srcH, templatW, templatH, resultH, resultW;
-		srcW = src.cols;
-		srcH = src.rows;
-		templatW = templat.cols;
-		templatH = templat.rows;
-		if (srcW < templatW || srcH < templatH)
+		int leftTemW, rightTemW;
+		leftTemW = rightTemW = templat.cols / 2;
+
+		Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
+		Mat leftTemplat(templat, leftTempRect);
+		Rect rightSrcRect(src.cols-templat.cols-1, 0, templat.cols, src.rows - 1);
+		Mat rightSrc(src, rightSrcRect);
+		MyTemplateMatch(rightSrc, leftTemplat, TargetPoint, Point(src.cols - templat.cols-1, 0));
+
+		Rect rightTempRect(templat.cols - rightTemW-1, 0,rightTemW , templat.rows - 1);
+		Mat rightTemplat(templat, rightTempRect);
+		Rect leftSrcRect(0, 0, templat.cols, src.rows-1);
+		Mat leftSrc(src, leftSrcRect);
+		MyTemplateMatch(leftSrc, rightTemplat, TargetPoint, Point(0-(templat.cols - rightTemW - 1), 0));
+		
+
+		for(int j = TargetPoint.size()-1; j>=0; --j)//画出目标点对应的矩形
 		{
-			cout << "模板不能比原图小" << endl;
-			return 0;
+			minLoc = TargetPoint[j];
+			rectangle(srcResult, minLoc, Point(minLoc.x + templat.cols, minLoc.y + templat.rows), cvScalar(0, 0, 255));
 		}
 
-		resultW = srcW - templatW + 1;
-		resultH = srcH - templatH + 1;
-		result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float  
-		matchTemplate(src, templat, result, CV_TM_SQDIFF);
-		double minValue, maxValue;
-		Point minLoc, maxLoc;
-		minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
-		rectangle(srcResult, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), cvScalar(0, 0, 255));
-		Point new_minLoc;
+		TargetPoint.clear();
 
-		// 计算下一个最小值  
-		new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
-		while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.8*minValue + 0.2*maxValue)
-		{
-			cout << new_minLoc.y << " , " << new_minLoc.x << endl;
-			rectangle(srcResult, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH), cvScalar(0, 0, 255));
-			new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
-		}
-
-		cvNamedWindow("srcResult", 0);
-		cvNamedWindow("template", 0);
-		imshow("srcResult", srcResult);
-		imshow("template", templat);
+		imshow(filename, srcResult);
+		imwrite("a.png", srcResult);
+		cvWaitKey(0);
+		//imshow("template", templat);
 		
 	}
 
-	cvWaitKey(0);
+	
 
 	return 0;
 }
