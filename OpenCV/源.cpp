@@ -40,7 +40,7 @@ Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int te
 	double new_minVaule, new_maxValue;
 	Point new_minLoc, new_maxLoc;
 	minMaxLoc(result, &new_minVaule, &new_maxValue, &new_minLoc, &new_maxLoc, Mat());
-	return new_minLoc;
+	return new_maxLoc;
 }
 
 bool AddPoint(vector<Point2i> &TargetPoint, Point newPoint, int templatW, int templatH)
@@ -70,26 +70,26 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 	resultH = src.rows - templat.rows + 1;
 
 	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）
-	matchTemplate(src, templat, result, CV_TM_SQDIFF_NORMED);  //核心匹配函数
+	matchTemplate(src, templat, result, TM_CCORR_NORMED);  //核心匹配函数
 
 	double minValue, maxValue;
 	Point minLoc, maxLoc;
 
 	minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc, Mat());
-	if (minValue > 0.2) return 0; //没找到
+	if (maxValue < 0.8) return 0; //没找到
 
 	//TargetPoint.push_back(minLoc+offset);
-	AddPoint(TargetPoint, minLoc + offset, templat.cols, templat.rows);
+	AddPoint(TargetPoint, maxLoc + offset, templat.cols, templat.rows);
 
-	Point new_minLoc;
+	Point new_minLoc, new_maxLoc;
 
 	// 计算下一个最小值  
-	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templat.cols, templat.rows);
-	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.9*minValue + 0.1*maxValue)
+	new_maxLoc = getNextMinLoc(result, maxLoc, minValue, templat.cols, templat.rows);
+	while (result.at<float>(new_maxLoc.y, new_maxLoc.x) > 0.1*minValue + 0.9*maxValue)
 	{
 		//TargetPoint.push_back(new_minLoc + offset);
-		AddPoint(TargetPoint, new_minLoc + offset, templat.cols, templat.rows);
-		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templat.cols, templat.rows);
+		AddPoint(TargetPoint, new_maxLoc + offset, templat.cols, templat.rows);
+		new_maxLoc = getNextMinLoc(result, new_maxLoc, minValue, templat.cols, templat.rows);
 	}
 
 	return 1;
