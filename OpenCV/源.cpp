@@ -55,6 +55,11 @@ bool AddPoint(vector<Point2i> &TargetPoint, Point newPoint, int templatW, int te
 	return 1;
 }
 
+bool NewMatchTemplate(Mat src, Mat templat, Mat result)
+{
+
+}
+
 bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point offset)  //找到返回1，没找到返回0
 {
 	if (src.cols < templat.cols || src.rows < templat.rows)
