@@ -70,7 +70,7 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 	resultH = src.rows - templat.rows + 1;
 
 	result.create(resultW, resultH, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）
-	matchTemplate(src, templat, result, TM_CCORR_NORMED);  //核心匹配函数
+	matchTemplate(src, templat, result, TM_CCOEFF_NORMED);  //核心匹配函数
 
 	double minValue, maxValue;
 	Point minLoc, maxLoc;
