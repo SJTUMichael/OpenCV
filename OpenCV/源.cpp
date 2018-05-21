@@ -55,23 +55,50 @@ bool AddPoint(vector<Point2i> &TargetPoint, Point newPoint, int templatW, int te
 	return 1;
 }
 
-void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint)//保证取得点，模板的积分图对应点不为零（除数）
+
+void wxyIntegral(Mat source, Mat integral) //source和integral都是int型
+{
+	int sourceW = source.cols;
+	int sourceH = source.rows;
+
+	int *p = integral.ptr<int>(0);
+	for (int a = 0; a <= sourceW; a++)  //第一行全为0
+		p[a] = 0;
+
+	for (int y = 0; y < sourceH; y++) {
+		uchar *lineSrc = source.ptr<uchar>(y);
+		int *intePre = integral.ptr<int>(y);
+		int *inteNow = integral.ptr<int>(y+1);
+		inteNow[0] = 0;
+		int sum = 0;
+		for (int x = 0; x < sourceW; x++) {			
+			sum += (lineSrc[x] == 0) ? 1 : 0;
+			inteNow[x + 1] = intePre[x + 1] + sum;
+		}
+	}
+}
+
+void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint, Point center)//保证取得点，模板的积分图对应点不为零（除数）
 {
 	int tempW = tempIntegral.cols-1;
 	int tempH = tempIntegral.rows-1;
-	int pointNum = log(tempW*tempH);
+	int pointNum = 2*log2(tempW*tempH);
 
 	srand(GetTickCount());
 	int halftempW = tempW / 2;
 	int halftempH = tempH / 2;
+	int product = center.x*center.y;
+
+	cout << center << endl;
 
 	int x, y;
 
 	for (int i = 0; i < pointNum; i++) {
 		do {
-			x = halftempW + rand() % halftempW;
-			y = halftempH + rand() % halftempH;
-		} while (tempIntegral.at<int>(y, x) == 0);
+			x = rand() % tempW;
+			y = rand() % tempH;
+
+		} while (tempIntegral.at<int>(y, x) == 0 || x*y < product);
 
 		calculatePoint.push_back(Point2i(x, y));
 	}
@@ -83,22 +110,35 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 {
 	Mat tempIntegral(templat.rows+1, templat.cols+1, CV_32SC1);
 	Mat srcIntegral(src.rows + 1, src.cols + 1, CV_32SC1);
-	integral(templat, tempIntegral, CV_32S);
-	integral(src, srcIntegral, CV_32S);
-
+	wxyIntegral(templat, tempIntegral);	
+	wxyIntegral(src, srcIntegral);
 	
 	int tempW = templat.cols;
 	int tempH = templat.rows;
 
+	int sumX = 0, sumY = 0;
+	int count = 0;
+	int meanX = 0, meanY = 0;
 
-
+	for (int a = 0; a < tempH; a++) {
+		uchar *p = templat.ptr<uchar>(a);
+		for (int b = 0; b < tempW; b++) {
+			if (p[b] < 120){
+				sumX += b; sumY += a;
+				count++;
+			}
+		}
+	}
+	meanX = sumX / count;
+	meanY = sumY / count;
+	
 	vector<Point2i> calculatePoint;
 	calculatePoint.push_back(Point2i(tempW - 1, tempH - 1));//第一点固定为右下角点。点的坐标以原图为准，不同于积分后扩大1个像素的图
 
-	pickPoints(tempIntegral, calculatePoint);
+	pickPoints(tempIntegral, calculatePoint,Point(meanX, meanY));
 	int pointsNum = calculatePoint.size();
 
-	float tempPoint[20];
+	float tempPoint[50];
 
 	for (int m = 0; m < pointsNum; m++) {
 		tempPoint[m] = tempIntegral.at<int>(calculatePoint[m].y + 1, calculatePoint[m].x + 1);
@@ -113,7 +153,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 	bool pass = 0;
 	bool findFlag = 0;
 	float pointIntegral = 0;
-	float ratio[20];//存放选出点对应位置图像和模板像素和的比
+	float ratio[50];//存放选出点对应位置图像和模板像素和的比
 	for (int y = 1; y <= resultH; y++)  //遍历src中（M-m）*(N-n)
 	{
 		p = result.ptr<float>(y-1);
@@ -125,12 +165,16 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 			for (int i = 0; i < pointsNum; i++) {
 				pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y, x) - srcIntegral.at<int>(y + calculatePoint[i].y, x) - srcIntegral.at<int>(y, x + calculatePoint[i].x);
 				ratio[i] = pointIntegral / tempPoint[i];
+				if (ratio[i] > 1.2 || ratio[i] < 0.8) {
+					pass = 1;
+					break;
+				}
 				sum += ratio[i];
 				mean = sum / (i + 1);
-				if (mean > 1.05 || mean < 0.95){ 
+				/*if (mean > 1.05 || mean < 0.95){ 
 					pass = 1; 
 					break; 
-				}
+				}*/
 			}
 
 			if (pass)   continue;
@@ -143,7 +187,6 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 			p[x-1] = sqrt(accum / (pointsNum - 1));//方差
 		}
 	}
-
 	if (findFlag)
 		return 1;
 	else
@@ -200,12 +243,13 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data5\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data3\\mold\\mold.png", 0);
+	
 
-	for (unsigned int i = 0; i <= 12; ++i)
+	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data5\\%d.png", i);
-		src = imread(filename, 0);
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data3\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
 		{
@@ -230,7 +274,7 @@ int main()
 		int leftTemW, rightTemW;
 		leftTemW = rightTemW = templat.cols / 2;
 
-		Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
+		/*Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
 		Mat leftTemplat(templat, leftTempRect);
 		Rect rightSrcRect(src.cols - templat.cols - 1, 0, templat.cols, src.rows - 1);
 		Mat rightSrc(src, rightSrcRect);
@@ -240,7 +284,7 @@ int main()
 		Mat rightTemplat(templat, rightTempRect);
 		Rect leftSrcRect(0, 0, templat.cols, src.rows - 1);
 		Mat leftSrc(src, leftSrcRect);
-		MyTemplateMatch(leftSrc, rightTemplat, TargetPoint, Point(0 - (templat.cols - rightTemW - 1), 0));
+		MyTemplateMatch(leftSrc, rightTemplat, TargetPoint, Point(0 - (templat.cols - rightTemW - 1), 0));*/
 
 
 		for (int j = TargetPoint.size() - 1; j >= 0; --j)//画出目标点对应的矩形
@@ -256,8 +300,6 @@ int main()
 		cvWaitKey(0);
 
 	}
-
-
 
 	return 0;
 }
