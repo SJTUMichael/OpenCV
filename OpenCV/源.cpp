@@ -21,25 +21,25 @@ float accum(Mat srcIntegral, Mat tempIntegral, Point calPoint) //calPointÎªÒª¼ÆË
 	int tempW = tempIntegral.cols-1;
 	int tempH = tempIntegral.rows-1;
 
-	int *tempLine, *srcLine;
-	float *ratioLine;
-	int *firstLineSrc = srcIntegral.ptr<int>(calPoint.y - 1);
-	int pointInte = 0;
-	int orignInte = srcIntegral.at<int>(calPoint.y-1, calPoint.x-1);
-	float sum = 0;
-	float accum = 0;
+	int *tempLine, *srcLine; //Ö¸ÏòÄ£°åºÍÔ­Í¼ÏñĞĞµÄÖ¸Õë
+	float *ratioLine;//Ö¸Ïò±ÈÀı´æ´¢¾ØÕóĞĞµÄÖ¸Õë
+	int *firstLineSrc = srcIntegral.ptr<int>(calPoint.y - 1);//Ö¸Ïò´ı¼ì²âµãÉÏÒ»ĞĞÖ¸Õë
+	int pointInte = 0;//¸ÃµãÔ­Í¼ÏñĞ¡¾ØĞÎ»ı·ÖÖµ
+	int orignInte = srcIntegral.at<int>(calPoint.y-1, calPoint.x-1); //´ı¼ì²âµã×óÉÏ½Çµã»ı·ÖÍ¼¶ÔÓ¦Öµ
+	float sum = 0;//ËùÓĞ¼ÆÈëµã±ÈÀıÖ®ºÍ
+	float accum = 0;//·½²î
 
-	Mat ratio(tempH, tempW, CV_32FC1);
+	Mat ratio(tempH, tempW, CV_32FC1);//ÓÃÀ´´æ´¢¼ÆËã±ÈÀı½á¹û
 
 	for (int y = 0; y < tempH; y++) {//µãcalPointÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
 		tempLine = tempIntegral.ptr<int>(y + 1);
 		srcLine = srcIntegral.ptr<int>(calPoint.y + y);
 		ratioLine = ratio.ptr<float>(y);
 		for (int x = 0; x < tempW; x++) {
-			pointInte = srcLine[calPoint.x + x] + orignInte - firstLineSrc[calPoint.x + x] - srcLine[calPoint.x - 1];
-			//if (tempLine[x + 1] == 0) continue;
+			//if (tempLine[x + 1] == 0) continue;//·ÀÖ¹·ÖÄ¸ÎªÁã
 
-			ratioLine[x] = (float)(pointInte + 1) / (float)(tempLine[x + 1] + 1);
+			pointInte = srcLine[calPoint.x + x] + orignInte - firstLineSrc[calPoint.x + x] - srcLine[calPoint.x - 1];
+			ratioLine[x] = (float)(pointInte + 1) / (float)(tempLine[x + 1] + 1);  //À­ÆÕÀ­Ë¹Æ½»¬Ëã·¨£¨¹ş¹ş£©
 			sum += ratioLine[x];
 		}
 	}
@@ -54,6 +54,56 @@ float accum(Mat srcIntegral, Mat tempIntegral, Point calPoint) //calPointÎªÒª¼ÆË
 	}
 
 	return sqrt(accum / (tempH*tempW - 1));
+}
+
+float accumHMV(Mat srcIntegral, Mat tempIntegral, Point calPoint) //´óÓÚ1/2¹¤¼şÏñËØÖµ
+{//calPointÎªÒª¼ÆËãµÄµã,ÒÔ»ı·ÖÍ¼Îª»ù×¼×ø±ê£¨¶àÒ»ĞĞÁĞ£©
+	int tempW = tempIntegral.cols - 1;
+	int tempH = tempIntegral.rows - 1;
+	int halfMaxValue = tempIntegral.at<int>(tempH, tempW) / 2;//¹¤¼şÏñËØºÍµÄÒ»°ë
+
+	int *tempLine, *srcLine; //Ö¸ÏòÄ£°åºÍÔ­Í¼ÏñĞĞµÄÖ¸Õë
+	float *ratioLine;//Ö¸Ïò±ÈÀı´æ´¢¾ØÕóĞĞµÄÖ¸Õë
+	int *firstLineSrc = srcIntegral.ptr<int>(calPoint.y - 1);//Ö¸Ïò´ı¼ì²âµãÉÏÒ»ĞĞÖ¸Õë
+	int pointInte = 0;//¸ÃµãÔ­Í¼ÏñĞ¡¾ØĞÎ»ı·ÖÖµ
+	int orignInte = srcIntegral.at<int>(calPoint.y - 1, calPoint.x - 1); //´ı¼ì²âµã×óÉÏ½Çµã»ı·ÖÍ¼¶ÔÓ¦Öµ
+	float sum = 0;//ËùÓĞ¼ÆÈëµã±ÈÀıÖ®ºÍ
+	float accum = 0;//·½²î
+	int count = 0;//¼ÇÂ¼¹²ÓĞ¶àÉÙ¸öµã±»ËãÈë
+
+	Mat ratio(tempH, tempW, CV_32FC1);//ÓÃÀ´´æ´¢¼ÆËã±ÈÀı½á¹û
+
+	for (int y = 0; y < tempH; y++) {//µãcalPointÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
+		tempLine = tempIntegral.ptr<int>(y + 1);
+		srcLine = srcIntegral.ptr<int>(calPoint.y + y);
+		ratioLine = ratio.ptr<float>(y);
+		for (int x = 0; x < tempW; x++) {
+			if (tempLine[x + 1] < halfMaxValue)//Ñ¡Ôñ³ö´óÓÚ¹¤¼şÒ»°ëÏñËØÖµµÄµã²ÎÓë·½²î¼ÆËã
+			{ 
+				ratioLine[x] = 0;
+			}
+			else 
+			{
+				pointInte = srcLine[calPoint.x + x] + orignInte - firstLineSrc[calPoint.x + x] - srcLine[calPoint.x - 1];
+				ratioLine[x] = (float)pointInte / (float)tempLine[x + 1];
+				sum += ratioLine[x];
+				count++;
+			}	
+			
+		}
+	}
+
+	float mean = sum / count;
+
+	for (int m = 0; m < tempH; m++) {
+		ratioLine = ratio.ptr<float>(m);
+		for (int n = 0; n < tempW; n++) {
+			if(ratioLine[n] != 0)
+				accum += (ratioLine[n] - mean)*(ratioLine[n] - mean);
+		}
+	}
+
+	return sqrt(accum / (count - 1));
 }
 
 
@@ -72,7 +122,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 	int count = 0;
 	int meanX = 0, meanY = 0;
 
-	for (int a = 0; a < tempH; a++) {
+	for (int a = 0; a < tempH; a++) {//¼ÆËãÖØĞÄ
 		uchar *p = templat.ptr<uchar>(a);
 		for (int b = 0; b < tempW; b++) {
 			if (p[b] < 120){
@@ -123,15 +173,14 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 				}
 				sum += ratio[i];
 				
-				/*if (mean > 1.05 || mean < 0.95){ 
-					pass = 1; 
-					break; 
-				}*/
+				
 			}
+			mean = sum / pointsNum;
+			if (mean > 1.1 || mean < 0.8) pass = 1; 
 
 			if (pass)   continue;
 			findFlag = 1;
-			p[x - 1] = accum(srcIntegral, tempIntegral, Point(x, y));
+			p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
 
 			/*mean = sum / pointsNum;
 			float accum = 0.0;
@@ -180,7 +229,7 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 
 	// ¼ÆËãÏÂÒ»¸ö×îĞ¡Öµ  
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templat.cols, templat.rows);
-	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.9*minValue + 0.1*maxValue)
+	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 5*minValue)
 	{
 		//TargetPoint.push_back(new_minLoc + offset);
 		AddPoint(TargetPoint, new_minLoc + offset, templat.cols, templat.rows);
@@ -197,12 +246,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // resultÓÃÀ´´æ·Å½á¹û£¬src0ÎªÔ­Í¼Ïñ£¬srcÎªÀ©Õ¹±ß½çºóÍ¼Ïñ
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\0.png", 1);  //ÓÃÀ´ÏÔÊ¾ 
-	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data3\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data5\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data3\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data5\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
@@ -225,10 +274,10 @@ int main()
 		MyTemplateMatch(src, templat, TargetPoint, Point(0, 0));
 
 
-		int leftTemW, rightTemW;
+		/*int leftTemW, rightTemW;
 		leftTemW = rightTemW = templat.cols / 2;
 
-		/*Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
+		Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
 		Mat leftTemplat(templat, leftTempRect);
 		Rect rightSrcRect(src.cols - templat.cols - 1, 0, templat.cols, src.rows - 1);
 		Mat rightSrc(src, rightSrcRect);
@@ -336,8 +385,6 @@ void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint, Point center)
 	int halftempW = tempW / 2;
 	int halftempH = tempH / 2;
 	int product = center.x*center.y;
-
-	cout << center << endl;
 
 	int x, y;
 
