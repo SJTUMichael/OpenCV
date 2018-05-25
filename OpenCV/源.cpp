@@ -106,6 +106,24 @@ float accumHMV(Mat srcIntegral, Mat tempIntegral, Point calPoint) //´óÓÚ1/2¹¤¼şÏ
 	return sqrt(accum / (count - 1));
 }
 
+float MAD(Mat src, Mat templat, Point calPoint)//pointÒÔÔ­Í¼Îª»ù×¼£¬¶ø²»ÊÇ»ı·ÖÍ¼
+{
+	int tempW = templat.cols;
+	int tempH = templat.rows;
+	int *tempLine, *srcLine; //Ö¸ÏòÄ£°åºÍÔ­Í¼ÏñĞĞµÄÖ¸Õë
+
+	int errCount = 0;
+	for (int y = 0; y < tempH; y++) {
+		tempLine = templat.ptr<int>(y);
+		srcLine = src.ptr<int>(calPoint.y + y);
+		for (int x = 0; x < tempW; x++) {
+			if (srcLine[calPoint.x + x] != tempLine[x])
+				errCount++;
+		}
+	}
+	return (float)errCount / (float)(tempW*tempH);
+}
+
 
 
 bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
@@ -176,11 +194,12 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 				
 			}
 			mean = sum / pointsNum;
-			if (mean > 1.1 || mean < 0.8) pass = 1; 
+			if (mean > 1.2 || mean < 0.8) pass = 1; 
 
 			if (pass)   continue;
 			findFlag = 1;
-			p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
+			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
+			p[x - 1] = MAD(src, templat, Point(x - 1, y - 1));
 
 			/*mean = sum / pointsNum;
 			float accum = 0.0;
@@ -229,7 +248,7 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 
 	// ¼ÆËãÏÂÒ»¸ö×îĞ¡Öµ  
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templat.cols, templat.rows);
-	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 5*minValue)
+	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.1*minValue+0.9*maxValue)
 	{
 		//TargetPoint.push_back(new_minLoc + offset);
 		AddPoint(TargetPoint, new_minLoc + offset, templat.cols, templat.rows);
@@ -246,12 +265,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // resultÓÃÀ´´æ·Å½á¹û£¬src0ÎªÔ­Í¼Ïñ£¬srcÎªÀ©Õ¹±ß½çºóÍ¼Ïñ
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\0.png", 1);  //ÓÃÀ´ÏÔÊ¾ 
-	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data5\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data5\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
