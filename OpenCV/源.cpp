@@ -9,11 +9,11 @@
 using namespace std;
 using namespace cv;
 
-bool wxyMatchTemplate(Mat src, Mat templat, Mat result);
+//bool wxyMatchTemplate(Mat src, Mat templat, Mat result);
 Point getNextMinLoc(Mat result, Point minLoc, int maxVaule, int templatW, int templatH);
 bool AddPoint(vector<Point2i> &TargetPoint, Point newPoint, int templatW, int templatH);
 void wxyIntegral(Mat source, Mat integral);
-void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint, Point center);
+void pickPoints(Mat templat, vector<Point2i> &calculatePoint);
 
 
 float accum(Mat srcIntegral, Mat tempIntegral, Point calPoint) //calPoint为要计算的点,以积分图为基准坐标（多一行列）
@@ -124,19 +124,121 @@ float MAD(Mat src, Mat templat, Point calPoint)//point以原图为基准，而不是积分图
 	return (float)errCount / (float)(tempW*tempH);
 }
 
-
-
-bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
+float cvMT(Mat src, Mat templat, Point calPoint)//point以原图为基准，而不是积分图
 {
-	Mat tempIntegral(templat.rows+1, templat.cols+1, CV_32SC1);
-	Mat srcIntegral(src.rows + 1, src.cols + 1, CV_32SC1);
-	wxyIntegral(templat, tempIntegral);	
-	wxyIntegral(src, srcIntegral);
+	Mat srcPoint(src, Rect(calPoint.x, calPoint.y, templat.cols, templat.rows));
+	Mat result;
+	result.create(1, 1, CV_32FC1);
+
+	matchTemplate(srcPoint, templat, result, TM_SQDIFF_NORMED);
+
+	return result.at<float>(0, 0);
+}
+
+void finalLocate(Mat srcIntegral, vector<Point2i> &TargetPoint, int tempW, int tempH) //TargetPoint是以原图像为基准的坐标值
+{
+	int maxMoveX = tempW / 20;
+	int maxMoveY = tempH / 20;
+	int pointNum = TargetPoint.size();
+	
+
+	for (int i = 0; i < pointNum; i++)
+	{
+		int *srcLineS0 = srcIntegral.ptr<int>(TargetPoint[i].y);//up start
+		int *srcLineS = srcIntegral.ptr<int>(TargetPoint[i].y + 1);//start
+		int *srcLineE = srcIntegral.ptr<int>(TargetPoint[i].y + tempH);//end
+		int sumRow = srcLineS[TargetPoint[i].x + tempW] + srcLineS0[TargetPoint[i].x] - srcLineS0[TargetPoint[i].x + tempW] - srcLineS[TargetPoint[i].x];
+		int sumCol = srcLineE[TargetPoint[i].x + 1] + srcLineS0[TargetPoint[i].x]- srcLineS0[TargetPoint[i].x + 1]- srcLineE[TargetPoint[i].x];
+		int count = 0;
+
+		/*if (sumRow <= 1) {
+			int *srcLineSnext = srcIntegral.ptr<int>(TargetPoint[i].y + 2);
+			if (srcLineSnext[TargetPoint[i].x + tempW] - srcLineSnext[TargetPoint[i].x + 1] <= 1)
+				TargetPoint[i].y += 1;
+		}
+		else {
+			TargetPoint[i].y -= 1;
+		}*/
+		while (sumRow <= 1) 
+		{
+			int *S0Next = srcIntegral.ptr<int>(TargetPoint[i].y + 1);
+			int *Snext = srcIntegral.ptr<int>(TargetPoint[i].y + 2);
+			sumRow = Snext[TargetPoint[i].x + tempW] + S0Next[TargetPoint[i].x] - S0Next[TargetPoint[i].x + tempW] - Snext[TargetPoint[i].x];
+			if (sumRow <= 1)
+				TargetPoint[i].y += 1;
+		}
+		while (sumRow > 1)
+		{
+			TargetPoint[i].y -= 1;
+			int *S0Next = srcIntegral.ptr<int>(TargetPoint[i].y);
+			int *Snext = srcIntegral.ptr<int>(TargetPoint[i].y + 1);
+			sumRow = Snext[TargetPoint[i].x + tempW] + S0Next[TargetPoint[i].x] - S0Next[TargetPoint[i].x + tempW] - Snext[TargetPoint[i].x];
+			//if (sumRow > 1)
+				
+		}
+
+		if (sumCol <= 1){
+			if (srcLineE[TargetPoint[i].x + 2] - srcLineS[TargetPoint[i].x + 2] <= 1)
+				TargetPoint[i].x += 1;
+		}
+		else {
+			TargetPoint[i].x -= 1;
+		}
+	}
+}
+
+int findSeed(vector<Point2i> &survivePoint, vector<Point2i> &seedPoint, int tempW, int tempH)
+{
+	int halfTempW = tempW / 2;
+	int halfTempH = tempH / 2;
+
+	int seedNum = 0;
+	vector<Point2i> groupPoint;
+
+
+	while (!survivePoint.empty()) 
+	{	
+		int sumX = 0;
+		int sumY = 0;
+
+		groupPoint.push_back(survivePoint[0]);
+		survivePoint.erase(survivePoint.begin());
+
+		for (int i = survivePoint.size() - 1; i >= 0; i--) 
+		{
+			if (abs(survivePoint[i].x - groupPoint[0].x) < halfTempW && abs(survivePoint[i].y - groupPoint[0].y) < halfTempH) 
+			{
+				groupPoint.push_back(survivePoint[i]);
+				survivePoint.erase(survivePoint.begin() + i);
+			}
+		}
+
+		for (int j = groupPoint.size() - 1; j >= 0; j--) 
+		{
+			sumX += groupPoint[j].x;
+			sumY += groupPoint[j].y;
+		}
+
+		seedPoint.push_back(Point2i(sumX / groupPoint.size(), sumY / groupPoint.size()));
+
+		cout << groupPoint << endl;
+		
+		seedNum++;
+		groupPoint.clear();
+	}
+
+	return seedNum;
+}
+
+
+bool wxyMatchTemplate(Mat src, Mat templat, Mat srcIntegral, Mat tempIntegral, Mat result)
+{
+
 	
 	int tempW = templat.cols;
 	int tempH = templat.rows;
 
-	int sumX = 0, sumY = 0;
+	/*int sumX = 0, sumY = 0;
 	int count = 0;
 	int meanX = 0, meanY = 0;
 
@@ -150,17 +252,19 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 		}
 	}
 	meanX = sumX / count;
-	meanY = sumY / count;
+	meanY = sumY / count;*/
 	
-	vector<Point2i> calculatePoint;
-	calculatePoint.push_back(Point2i(tempW - 1, tempH - 1));//第一点固定为右下角点。点的坐标以原图为准，不同于积分后扩大1个像素的图
+	vector<Point2i> calculatePoint;//在每次模板和原图片上点对比时，选中用来计算面积比的点
+	vector<Point2i> survivePoint;//经过SSDA+积分图的筛选，剩下来的点
+	vector<Point2i> seedPoint;//经过将剩下来点聚类，得到每个目标初步定位的种子点。作为后面cvMT的搜索起始点
+	//calculatePoint.push_back(Point2i(tempW - 1, tempH - 1));//第一点固定为右下角点。点的坐标以原图为准，不同于积分后扩大1个像素的图
 
-	pickPoints(tempIntegral, calculatePoint,Point(meanX, meanY));
+	pickPoints(templat, calculatePoint);
 	int pointsNum = calculatePoint.size();
 
-	float tempPoint[50];
+	float tempPoint[20];
 
-	for (int m = 0; m < pointsNum; m++) {
+	for (int m = 0; m < pointsNum; m++) {//预先将templat中选出点算好，后面不用重复计算，可以直接用
 		tempPoint[m] = tempIntegral.at<int>(calculatePoint[m].y + 1, calculatePoint[m].x + 1);
 	}
 
@@ -173,7 +277,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 	bool pass = 0;
 	bool findFlag = 0;
 	float pointIntegral = 0;
-	float ratio[50];//存放选出点对应位置图像和模板像素和的比
+	float ratio[20];//存放选出点对应位置图像和模板像素和的比
+	int count = 0;
 	for (int y = 1; y <= resultH; y++)  //遍历src中（M-m）*(N-n)
 	{
 		p = result.ptr<float>(y-1);
@@ -182,33 +287,42 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat result)
 			sum = 0;
 			mean = 0;
 			pass = 0;
-			for (int i = 0; i < pointsNum; i++) {
+			for (int i = 0; i < pointsNum; i++) {//对挑选出来的15个点求比例
 				pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
 				ratio[i] = pointIntegral / tempPoint[i];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i] > 1.2 || ratio[i] < 0.8) {
+				if (ratio[i] > 1.25 || ratio[i] < 0.75) {
 					pass = 1;
 					break;
 				}
-				sum += ratio[i];
-				
-				
+				sum += ratio[i];	
 			}
 			mean = sum / pointsNum;
-			if (mean > 1.2 || mean < 0.8) pass = 1; 
-
-			if (pass)   continue;
-			findFlag = 1;
-			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
-			p[x - 1] = MAD(src, templat, Point(x - 1, y - 1));
-
-			/*mean = sum / pointsNum;
 			float accum = 0.0;
 			for (int j = 0; j < pointsNum; j++) {
 				accum += (ratio[j] - mean)*(ratio[j] - mean);
 			}
-			p[x-1] = sqrt(accum / (pointsNum - 1));//方差*/
+			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
+			
+			if (T > 2.9768 || T < -2.9768) pass = 1;//T检验法，a = 0.01
+
+
+
+			if (pass)   continue;
+			count++;
+			//cout << T <<Point(x,y) << endl;
+			findFlag = 1;
+			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
+			p[x - 1] = cvMT(src, templat, Point(x - 1, y - 1));
+
+			survivePoint.push_back(Point(x - 1, y - 1));
+			
 		}
 	}
+
+	findSeed(survivePoint, seedPoint, tempW, tempH);
+
+
+	cout << "count : " << count << endl;
 	if (findFlag)
 		return 1;
 	else
@@ -234,8 +348,15 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 
 	Mat result = Mat::ones(resultH, resultW, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）,将result全设为1，以便和标准差比较
 
+	Mat tempIntegral(templat.rows + 1, templat.cols + 1, CV_32SC1);//算积分图
+	Mat srcIntegral(src.rows + 1, src.cols + 1, CV_32SC1);
+	wxyIntegral(templat, tempIntegral);
+	wxyIntegral(src, srcIntegral);
+
 	//matchTemplate(src, templat, result, CV_TM_SQDIFF_NORMED);  //核心匹配函数
-	if(!wxyMatchTemplate(src, templat, result)) return 0;
+	if(!wxyMatchTemplate(src, templat, srcIntegral, tempIntegral, result)) return 0;
+
+	imshow("点群", result);
 
 	double minValue, maxValue;
 	Point minLoc, maxLoc;
@@ -250,10 +371,11 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 	new_minLoc = getNextMinLoc(result, minLoc, maxValue, templat.cols, templat.rows);
 	while (result.at<float>(new_minLoc.y, new_minLoc.x) < 0.1*minValue+0.9*maxValue)
 	{
-		//TargetPoint.push_back(new_minLoc + offset);
 		AddPoint(TargetPoint, new_minLoc + offset, templat.cols, templat.rows);
 		new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templat.cols, templat.rows);
 	}
+
+	finalLocate(srcIntegral, TargetPoint, templat.cols, templat.rows);
 
 	return 1;
 }
@@ -394,11 +516,25 @@ void wxyIntegral(Mat source, Mat integral) //source和integral都是int型
 	}
 }
 
-void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint, Point center)//保证取得点，模板的积分图对应点不为零（除数）
+void pickPoints(Mat templat, vector<Point2i> &calculatePoint)//保证取得点，模板的积分图对应点不为零（除数）
 {
-	int tempW = tempIntegral.cols-1;
-	int tempH = tempIntegral.rows-1;
-	int pointNum = 2*log2(tempW*tempH);
+	int tempW = templat.cols;
+	int tempH = templat.rows;
+	int intervalW = tempW / 5;
+	int intervalH = tempH / 5;
+	int a = 5;
+	for (int y = 0; y < 5; y++) 
+	{
+		for (int x = 0; x < a; x++) 
+		{
+			calculatePoint.push_back(Point2i(tempW - 1 - x * intervalW, tempH - 1 - y * intervalH));
+		}
+		a--;
+	}
+
+		
+
+	/*int pointNum = 2*log2(tempW*tempH);
 
 	srand(GetTickCount());
 	int halftempW = tempW / 2;
@@ -415,6 +551,6 @@ void pickPoints(Mat tempIntegral, vector<Point2i> &calculatePoint, Point center)
 		} while (tempIntegral.at<int>(y, x) == 0 || x*y < product);
 
 		calculatePoint.push_back(Point2i(x, y));
-	}
+	}*/
 
 }
