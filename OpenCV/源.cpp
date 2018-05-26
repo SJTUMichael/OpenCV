@@ -230,36 +230,100 @@ int findSeed(vector<Point2i> &survivePoint, vector<Point2i> &seedPoint, int temp
 	return seedNum;
 }
 
-
-bool wxyMatchTemplate(Mat src, Mat templat, Mat srcIntegral, Mat tempIntegral, Mat result)
+void LSS(Mat src, Mat templat, vector<Point2i> &seedPoint, vector<Point2i> &targetPoint) //线性正方形搜索算法(Line—Square Search，简称LSS)
 {
+	for (int i = seedPoint.size() - 1; i >= 0; i--) 
+	{
+		int x = seedPoint[i].x;
+		int y = seedPoint[i].y;
+
+		float square[3][3] = { 1.0 };//以种子点为中心的正方形9个点，各自的相关度
+		float directionP = 1;//方向点对应的相关度（越小越匹配）
+		float min = 1;
+		int minX = 1;//最小点坐标
+		int minY = 1;
+		while (1) 
+		{
+			min = 1;
+			minX = 1;
+			minY = 1;
+			for (int row = 0; row < 3; row++) 
+			{
+				for (int col = 0; col < 3; col++) 
+				{
+					if (x + col - 1 < 0 || y + row - 1 < 0) //越界
+					{ 
+						square[row][col] = 1; 
+						continue; 
+					}
+
+					square[row][col] = cvMT(src, templat, Point(x + col - 1, y + row - 1));
+					if (square[row][col] - min < 0) 
+					{
+						min = square[row][col];
+						minX = col; minY = row;
+					}
+				}
+			}
+
+			if (minX == 1 && minY == 1) 
+				break;//成功找到
+			else 
+			{
+				if (x + 2 * (minX - 1) < 0 || y + 2 * (minY - 1) < 0)  //检测是否超出图片范围
+					directionP = 1;
+				else
+					directionP = cvMT(src, templat, Point(x + 2 * (minX - 1), y + 2 * (minY - 1)));
+
+				if (directionP < min) {
+					x = x + 2 * (minX - 1);
+					y = y + 2 * (minY - 1);
+				}
+				else {
+					x = x + minX - 1;
+					y = y + minY - 1;
+				}
+
+			}
+
+		}
+		targetPoint.push_back(Point(x, y));
+	}
+}
+
+
+bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
+{
+	if (src.cols < templat.cols || src.rows < templat.rows)
+	{
+		cout << "模板不能比原图小" << endl;
+		cvWaitKey(0);
+		return 0;
+	}
+
+
+	int resultW, resultH;
+	resultW = src.cols - templat.cols + 1;
+	resultH = src.rows - templat.rows + 1;
+
+	Mat result = Mat::ones(resultH, resultW, CV_32FC1);    //  匹配方法计算的结果最小值为float（CV_32FC1）,将result全设为1，以便和标准差比较
+
+	Mat tempIntegral(templat.rows + 1, templat.cols + 1, CV_32SC1);//算积分图
+	Mat srcIntegral(src.rows + 1, src.cols + 1, CV_32SC1);
+	wxyIntegral(templat, tempIntegral);
+	wxyIntegral(src, srcIntegral);
 
 	
 	int tempW = templat.cols;
 	int tempH = templat.rows;
-
-	/*int sumX = 0, sumY = 0;
-	int count = 0;
-	int meanX = 0, meanY = 0;
-
-	for (int a = 0; a < tempH; a++) {//计算重心
-		uchar *p = templat.ptr<uchar>(a);
-		for (int b = 0; b < tempW; b++) {
-			if (p[b] < 120){
-				sumX += b; sumY += a;
-				count++;
-			}
-		}
-	}
-	meanX = sumX / count;
-	meanY = sumY / count;*/
 	
+	//下列点坐标都是以原图为准，不同于积分后扩大1个像素的图
 	vector<Point2i> calculatePoint;//在每次模板和原图片上点对比时，选中用来计算面积比的点
 	vector<Point2i> survivePoint;//经过SSDA+积分图的筛选，剩下来的点
 	vector<Point2i> seedPoint;//经过将剩下来点聚类，得到每个目标初步定位的种子点。作为后面cvMT的搜索起始点
-	//calculatePoint.push_back(Point2i(tempW - 1, tempH - 1));//第一点固定为右下角点。点的坐标以原图为准，不同于积分后扩大1个像素的图
+	vector<Point2i> targetPoint;//最终经过搜索后得到的目标位置
 
-	pickPoints(templat, calculatePoint);
+	pickPoints(templat, calculatePoint);//第一点固定为右下角点。点的坐标以原图为准，不同于积分后扩大1个像素的图
 	int pointsNum = calculatePoint.size();
 
 	float tempPoint[20];
@@ -270,8 +334,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat srcIntegral, Mat tempIntegral, M
 
 
 	float *p;
-	int resultW = result.cols;
-	int resultH = result.rows;
+	//int resultW = result.cols;
+	//int resultH = result.rows;
 	float sum = 0.0;
 	float mean = 0.0;
 	bool pass = 0;
@@ -308,11 +372,10 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat srcIntegral, Mat tempIntegral, M
 
 
 			if (pass)   continue;
-			count++;
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
 			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
-			p[x - 1] = cvMT(src, templat, Point(x - 1, y - 1));
+			//p[x - 1] = cvMT(src, templat, Point(x - 1, y - 1));
 
 			survivePoint.push_back(Point(x - 1, y - 1));
 			
@@ -321,8 +384,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, Mat srcIntegral, Mat tempIntegral, M
 
 	findSeed(survivePoint, seedPoint, tempW, tempH);
 
+	LSS(src, templat, seedPoint, TargetPoint);
 
-	cout << "count : " << count << endl;
 	if (findFlag)
 		return 1;
 	else
@@ -354,7 +417,7 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 	wxyIntegral(src, srcIntegral);
 
 	//matchTemplate(src, templat, result, CV_TM_SQDIFF_NORMED);  //核心匹配函数
-	if(!wxyMatchTemplate(src, templat, srcIntegral, tempIntegral, result)) return 0;
+	//if(!wxyMatchTemplate(src, templat, srcIntegral, tempIntegral, result)) return 0;
 
 	imshow("点群", result);
 
@@ -387,12 +450,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data2\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data2\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data1\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
@@ -412,7 +475,8 @@ int main()
 		Point minLoc;
 
 
-		MyTemplateMatch(src, templat, TargetPoint, Point(0, 0));
+		//MyTemplateMatch(src, templat, TargetPoint, Point(0, 0));
+		wxyMatchTemplate(src, templat, TargetPoint);
 
 
 		/*int leftTemW, rightTemW;
