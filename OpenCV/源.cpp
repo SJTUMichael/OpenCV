@@ -102,11 +102,11 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data5\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data2\\mold\\mold.png", 0);
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data5\\%d.png", i);
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data2\\%d.png", i);
 		src = imread(filename, 0);
 
 		if (src.empty() || templat.empty())
@@ -116,7 +116,7 @@ int main()
 			return 0;
 		}
 
-		//double t = (double)getTickCount();;  //测试运行时间
+		double t = (double)getTickCount();;  //测试运行时间
 
 		//copyMakeBorder(src0, src, 0, 0, templat.cols, templat.cols, BORDER_CONSTANT, Scalar(0,0,0)); //扩展待匹配的图像，本批图像工件从左向右进入，所以扩展图像左右
 		srcResult = src.clone(); //查看结果的图像
@@ -128,7 +128,7 @@ int main()
 		MyTemplateMatch(src, templat, TargetPoint, Point(0, 0));
 
 
-		int leftTemW, rightTemW;
+		/*int leftTemW, rightTemW;
 		leftTemW = rightTemW = templat.cols / 2;
 
 		Rect leftTempRect(0, 0, leftTemW, templat.rows - 1);
@@ -141,8 +141,10 @@ int main()
 		Mat rightTemplat(templat, rightTempRect);
 		Rect leftSrcRect(0, 0, templat.cols, src.rows - 1);
 		Mat leftSrc(src, leftSrcRect);
-		MyTemplateMatch(leftSrc, rightTemplat, TargetPoint, Point(0 - (templat.cols - rightTemW - 1), 0));
+		MyTemplateMatch(leftSrc, rightTemplat, TargetPoint, Point(0 - (templat.cols - rightTemW - 1), 0));*/
 
+		t = ((double)getTickCount() - t) / getTickFrequency(); //获得时间，单位是秒
+		cout << "程序段运行时间：" << 1000*t << "ms!" << endl;
 
 		for (int j = TargetPoint.size() - 1; j >= 0; --j)//画出目标点对应的矩形
 		{
