@@ -132,7 +132,9 @@ float cvMT(Mat src, Mat templat, Point calPoint)//pointÒÔÔ­Í¼Îª»ù×¼£¬¶ø²»ÊÇ»ı·ÖÍ
 
 	matchTemplate(srcPoint, templat, result, TM_SQDIFF_NORMED);
 
-	return result.at<float>(0, 0);
+	float *p = result.ptr<float>(0);
+
+	return p[0];
 }
 
 void finalLocate(Mat srcIntegral, vector<Point2i> &TargetPoint, int tempW, int tempH) //TargetPointÊÇÒÔÔ­Í¼ÏñÎª»ù×¼µÄ×ø±êÖµ
@@ -291,6 +293,55 @@ void LSS(Mat src, Mat templat, vector<Point2i> &seedPoint, vector<Point2i> &targ
 	}
 }
 
+void BianLi(Mat src, Mat templat, vector<Point2i> &survivePoint, vector<Point2i> &targetPoint)
+{
+	int tempW = templat.cols;
+	int tempH = templat.rows;
+	int halfTempW = tempW / 2;
+	int halfTempH = tempH / 2;
+
+	int seedNum = 0;
+	vector<Point2i> groupPoint;
+
+
+	while (!survivePoint.empty())
+	{
+		Point bestPoint;
+
+		groupPoint.push_back(survivePoint[0]);
+		survivePoint.erase(survivePoint.begin());
+
+		for (int i = survivePoint.size() - 1; i >= 0; i--)
+		{
+			if (abs(survivePoint[i].x - groupPoint[0].x) < halfTempW && abs(survivePoint[i].y - groupPoint[0].y) < halfTempH)
+			{
+				groupPoint.push_back(survivePoint[i]);
+				survivePoint.erase(survivePoint.begin() + i);
+			}
+		}
+
+		float A = 1;
+		float temp = 0;
+		for (int j = groupPoint.size() - 1; j >= 0; j--)
+		{
+			temp = cvMT(src, templat, Point(groupPoint[j].x, groupPoint[j].y));
+			if (temp < A)
+			{
+				A = temp;
+				bestPoint = groupPoint[j];
+			}
+		}
+
+		targetPoint.push_back(bestPoint);
+
+
+		seedNum++;
+		groupPoint.clear();
+	}
+
+
+}
+
 
 bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 {
@@ -316,6 +367,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 	
 	int tempW = templat.cols;
 	int tempH = templat.rows;
+	int tempW_5 = tempW / 5;
+	int tempH_5 = tempH / 5;
 	
 	//ÏÂÁĞµã×ø±ê¶¼ÊÇÒÔÔ­Í¼Îª×¼£¬²»Í¬ÓÚ»ı·ÖºóÀ©´ó1¸öÏñËØµÄÍ¼
 	vector<Point2i> calculatePoint;//ÔÚÃ¿´ÎÄ£°åºÍÔ­Í¼Æ¬ÉÏµã¶Ô±ÈÊ±£¬Ñ¡ÖĞÓÃÀ´¼ÆËãÃæ»ı±ÈµÄµã
@@ -325,6 +378,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 
 	pickPoints(templat, calculatePoint);//µÚÒ»µã¹Ì¶¨ÎªÓÒÏÂ½Çµã¡£µãµÄ×ø±êÒÔÔ­Í¼Îª×¼£¬²»Í¬ÓÚ»ı·ÖºóÀ©´ó1¸öÏñËØµÄÍ¼
 	int pointsNum = calculatePoint.size();
+	//pointsNum = 5;//****²âÊÔ*****
 
 	float tempPoint[20];
 
@@ -334,23 +388,32 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 
 
 	float *p;
+	int *Line0, *Line1, *Line2, *Line3, *Line4, *Line5;
 	float sum = 0.0;
 	float mean = 0.0;
 	bool pass = 0;
 	bool findFlag = 0;
 	float pointIntegral = 0;
 	float ratio[20];//´æ·ÅÑ¡³öµã¶ÔÓ¦Î»ÖÃÍ¼ÏñºÍÄ£°åÏñËØºÍµÄ±È
-	int count = 0;
+	int count_T = 0, count1 = 0, count2 = 0, count3 = 0, count4 = 0, count5 = 0;
 	for (int y = 1; y <= resultH; y++)  //±éÀúsrcÖĞ£¨M-m£©*(N-n)
 	{
 		p = result.ptr<float>(y-1);
+		Line0 = srcIntegral.ptr<int>(y-1);
+		Line1 = srcIntegral.ptr<int>(y - 1 + tempH_5);
+		Line2 = srcIntegral.ptr<int>(y - 1 + 2 * tempH_5);
+		Line3 = srcIntegral.ptr<int>(y - 1 + 3 * tempH_5);
+		Line4 = srcIntegral.ptr<int>(y - 1 + 4 * tempH_5);
+		Line5 = srcIntegral.ptr<int>(y + tempH - 1);
 		for (int x = 1; x <= resultW; x++)
 		{	
 			sum = 0;
 			mean = 0;
 			pass = 0;
-			for (int i = 0; i < pointsNum; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
-				pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
+			for (int i = 0; i < 5; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
+
+				//pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
+				pointIntegral = Line5[x + tempW - i * tempW_5] + Line0[x - 1] - Line5[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i] = pointIntegral / tempPoint[i];//ÉÏÊ½µã£¨x,y£©ÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
 				if (ratio[i] > 1.1 || ratio[i] < 0.9) {
 					pass = 1;
@@ -358,7 +421,57 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 				}
 				sum += ratio[i];	
 			}
-			if (pass)   continue;
+			if (pass)   continue; count1++;
+
+			for (int i = 0; i < 4; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
+
+				pointIntegral = Line4[x + tempW - i * tempW_5] + Line0[x - 1] - Line4[x - 1] - Line0[x + tempW - i * tempW_5];
+				ratio[i+5] = pointIntegral / tempPoint[i+5];//ÉÏÊ½µã£¨x,y£©ÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
+				if (ratio[i + 5] > 1.21 || ratio[i + 5] < 0.81) {
+					pass = 1;
+					break;
+				}
+				sum += ratio[i+5];
+			}
+			if (pass)   continue; count2++;
+
+			for (int i = 0; i < 3; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
+
+				pointIntegral = Line3[x + tempW - i * tempW_5] + Line0[x - 1] - Line3[x - 1] - Line0[x + tempW - i * tempW_5];
+				ratio[i + 9] = pointIntegral / tempPoint[i + 9];//ÉÏÊ½µã£¨x,y£©ÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
+				if (ratio[i + 9] > 1.21 || ratio[i + 9] < 0.81) {
+					pass = 1;
+					break;
+				}
+				sum += ratio[i + 9];
+			}
+			if (pass)   continue; count3++;
+
+			for (int i = 0; i < 2; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
+
+				pointIntegral = Line2[x + tempW - i * tempW_5] + Line0[x - 1] - Line2[x - 1] - Line0[x + tempW - i * tempW_5];
+				ratio[i + 12] = pointIntegral / tempPoint[i + 12];//ÉÏÊ½µã£¨x,y£©ÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
+				if (ratio[i + 12] > 1.21 || ratio[i + 12] < 0.81) {
+					pass = 1;
+					break;
+				}
+				sum += ratio[i + 12];
+			}
+			if (pass)   continue; count4++;
+
+			for (int i = 0; i < 1; i++) {//¶ÔÌôÑ¡³öÀ´µÄ15¸öµãÇó±ÈÀı
+
+				pointIntegral = Line1[x + tempW - i * tempW_5] + Line0[x - 1] - Line1[x - 1] - Line0[x + tempW - i * tempW_5];
+				ratio[i + 14] = pointIntegral / tempPoint[i + 14];//ÉÏÊ½µã£¨x,y£©ÊÇ°üº¬ÔÚ´ı¼ÆËãÍ¼ÏñÖĞµÄ×óÉÏ½Çµã
+				if (ratio[i + 14] > 1.21 || ratio[i + 14] < 0.81) {
+					pass = 1;
+					break;
+				}
+				sum += ratio[i + 14];
+			}
+			if (pass)   continue; count5++;
+
+			//p[x - 1] = 0;
 
 			mean = sum / pointsNum;
 			float accum = 0.0;
@@ -367,8 +480,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			}
 			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
 			
-			if (T > 2 || T < -2) continue;//T¼ìÑé·¨£¬a = 0.01 -> 2.9768
-	
+			if (T > 2.9768 || T < -2.9768) continue;//T¼ìÑé·¨£¬a = 0.01 -> 2.9768
+			count_T++;
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
 			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
@@ -379,13 +492,19 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 		}
 	}
 
-	findSeed(survivePoint, seedPoint, tempW, tempH);
+	//findSeed(survivePoint, seedPoint, tempW, tempH);
 
-	LSS(src, templat, seedPoint, TargetPoint);
+	//LSS(src, templat, seedPoint, TargetPoint);
+	BianLi(src, templat, survivePoint, TargetPoint);
 
 	t = ((double)getTickCount() - t) / getTickFrequency(); //»ñµÃÊ±¼ä£¬µ¥Î»ÊÇÃë
 	//»ñÈ¡´Ë³ÌĞò¶Î¿ªÊ¼Ö´ĞĞÊ±¼ä
 	cout << "³ÌĞò¶ÎÔËĞĞÊ±¼ä£º" << 1000*t << "ms!" << endl;
+
+	cout << count1 << "  " << count2 << "  " << count3 << "  " << count4 << "  " << count5 << "  " << count_T << endl;
+
+	//imshow("result", result);
+	//cvWaitKey(0);
 
 	if (findFlag)
 		return 1;
@@ -451,12 +570,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // resultÓÃÀ´´æ·Å½á¹û£¬src0ÎªÔ­Í¼Ïñ£¬srcÎªÀ©Õ¹±ß½çºóÍ¼Ïñ
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\0.png", 1);  //ÓÃÀ´ÏÔÊ¾ 
-	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\Ô­Í¼Ïñ.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
