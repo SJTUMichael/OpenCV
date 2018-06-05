@@ -221,7 +221,7 @@ int findSeed(vector<Point2i> &survivePoint, vector<Point2i> &seedPoint, int temp
 
 		seedPoint.push_back(Point2i(sumX / groupPoint.size(), sumY / groupPoint.size()));
 
-		cout << groupPoint << endl;
+		//cout << groupPoint << endl;
 		
 		seedNum++;
 		groupPoint.clear();
@@ -301,6 +301,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 		return 0;
 	}
 
+	double t = (double)getTickCount(); //测试运行时间
 
 	int resultW = src.cols - templat.cols + 1;
 	int resultH = src.rows - templat.rows + 1;
@@ -382,6 +383,10 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 
 	LSS(src, templat, seedPoint, TargetPoint);
 
+	t = ((double)getTickCount() - t) / getTickFrequency(); //获得时间，单位是秒
+	//获取此程序段开始执行时间
+	cout << "程序段运行时间：" << 1000*t << "ms!" << endl;
+
 	if (findFlag)
 		return 1;
 	else
@@ -461,7 +466,7 @@ int main()
 			return 0;
 		}
 
-		//double t = (double)getTickCount();;  //测试运行时间
+		
 
 		//copyMakeBorder(src0, src, 0, 0, templat.cols, templat.cols, BORDER_CONSTANT, Scalar(0,0,0)); //扩展待匹配的图像，本批图像工件从左向右进入，所以扩展图像左右
 		srcResult = src.clone(); //查看结果的图像
