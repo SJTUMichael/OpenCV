@@ -302,9 +302,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 	}
 
 
-	int resultW, resultH;
-	resultW = src.cols - templat.cols + 1;
-	resultH = src.rows - templat.rows + 1;
+	int resultW = src.cols - templat.cols + 1;
+	int resultH = src.rows - templat.rows + 1;
 
 	Mat result = Mat::ones(resultH, resultW, CV_32FC1);    //  Æ¥Åä·½·¨¼ÆËãµÄ½á¹û×îÐ¡ÖµÎªfloat£¨CV_32FC1£©,½«resultÈ«ÉèÎª1£¬ÒÔ±ãºÍ±ê×¼²î±È½Ï
 
@@ -334,8 +333,6 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 
 
 	float *p;
-	//int resultW = result.cols;
-	//int resultH = result.rows;
 	float sum = 0.0;
 	float mean = 0.0;
 	bool pass = 0;
@@ -360,6 +357,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 				}
 				sum += ratio[i];	
 			}
+			if (pass)   continue;
+
 			mean = sum / pointsNum;
 			float accum = 0.0;
 			for (int j = 0; j < pointsNum; j++) {
@@ -367,11 +366,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			}
 			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
 			
-			if (T > 2.9768 || T < -2.9768) pass = 1;//T¼ìÑé·¨£¬a = 0.01
-
-
-
-			if (pass)   continue;
+			if (T > 2.9768 || T < -2.9768) continue;//T¼ìÑé·¨£¬a = 0.01
+	
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
 			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
@@ -595,26 +591,5 @@ void pickPoints(Mat templat, vector<Point2i> &calculatePoint)//±£Ö¤È¡µÃµã£¬Ä£°åµ
 		}
 		a--;
 	}
-
-		
-
-	/*int pointNum = 2*log2(tempW*tempH);
-
-	srand(GetTickCount());
-	int halftempW = tempW / 2;
-	int halftempH = tempH / 2;
-	int product = center.x*center.y;
-
-	int x, y;
-
-	for (int i = 0; i < pointNum; i++) {
-		do {
-			x = rand() % tempW;
-			y = rand() % tempH;
-
-		} while (tempIntegral.at<int>(y, x) == 0 || x*y < product);
-
-		calculatePoint.push_back(Point2i(x, y));
-	}*/
 
 }
