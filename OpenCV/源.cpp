@@ -352,7 +352,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			for (int i = 0; i < pointsNum; i++) {//对挑选出来的15个点求比例
 				pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
 				ratio[i] = pointIntegral / tempPoint[i];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i] > 1.25 || ratio[i] < 0.75) {
+				if (ratio[i] > 1.1 || ratio[i] < 0.9) {
 					pass = 1;
 					break;
 				}
@@ -367,7 +367,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			}
 			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
 			
-			if (T > 2.9768 || T < -2.9768) continue;//T检验法，a = 0.01
+			if (T > 2 || T < -2) continue;//T检验法，a = 0.01 -> 2.9768
 	
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
@@ -451,12 +451,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data2\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data1\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data2\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
