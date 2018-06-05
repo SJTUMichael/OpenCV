@@ -451,12 +451,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data2\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data2\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data1\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
