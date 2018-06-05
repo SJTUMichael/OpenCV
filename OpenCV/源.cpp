@@ -104,7 +104,7 @@ int main()
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data1\\0.png", 1);  //ÓÃÀ´ÏÔÊ¾ 
 	templat = imread("C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\mold\\mold.png", 0);
 
-	for (unsigned int i = 0; i <= 16; ++i)
+	for (unsigned int i = 4; i <= 16; ++i)
 	{
 		sprintf(filename, "C:\\Users\\Mark\\Desktop\\²âÊÔËØ²Ä\\data2\\%d.png", i);
 		src = imread(filename, 0);
