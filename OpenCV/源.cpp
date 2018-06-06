@@ -415,63 +415,64 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 				//pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
 				pointIntegral = Line5[x + tempW - i * tempW_5] + Line0[x - 1] - Line5[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i] = pointIntegral / tempPoint[i];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i] > 1.1 || ratio[i] < 0.9) {
+				if (ratio[i] > 1.25 || ratio[i] < 0.75) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i];	
 			}
-			if (pass)   continue; count1++;
+			
+			if (pass)   continue;// count1++; 
 
 			for (int i = 0; i < 4; i++) {//对挑选出来的15个点求比例
 
 				pointIntegral = Line4[x + tempW - i * tempW_5] + Line0[x - 1] - Line4[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i+5] = pointIntegral / tempPoint[i+5];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i + 5] > 1.21 || ratio[i + 5] < 0.81) {
+				if (ratio[i + 5] > 1.21 || ratio[i + 5] < 0.75) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i+5];
 			}
-			if (pass)   continue; count2++;
+			if (pass)   continue; //count2++;
 
 			for (int i = 0; i < 3; i++) {//对挑选出来的15个点求比例
 
 				pointIntegral = Line3[x + tempW - i * tempW_5] + Line0[x - 1] - Line3[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i + 9] = pointIntegral / tempPoint[i + 9];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i + 9] > 1.21 || ratio[i + 9] < 0.81) {
+				if (ratio[i + 9] > 1.21 || ratio[i + 9] < 0.75) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i + 9];
 			}
-			if (pass)   continue; count3++;
+			if (pass)   continue;// count3++;
 
 			for (int i = 0; i < 2; i++) {//对挑选出来的15个点求比例
 
 				pointIntegral = Line2[x + tempW - i * tempW_5] + Line0[x - 1] - Line2[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i + 12] = pointIntegral / tempPoint[i + 12];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i + 12] > 1.21 || ratio[i + 12] < 0.81) {
+				if (ratio[i + 12] > 1.21 || ratio[i + 12] < 0.75) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i + 12];
 			}
-			if (pass)   continue; count4++;
+			if (pass)   continue; //count4++;
 
 			for (int i = 0; i < 1; i++) {//对挑选出来的15个点求比例
 
 				pointIntegral = Line1[x + tempW - i * tempW_5] + Line0[x - 1] - Line1[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i + 14] = pointIntegral / tempPoint[i + 14];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i + 14] > 1.21 || ratio[i + 14] < 0.81) {
+				if (ratio[i + 14] > 1.21 || ratio[i + 14] < 0.75) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i + 14];
 			}
-			if (pass)   continue; count5++;
+			if (pass)   continue;// count5++;
 
-			//p[x - 1] = 0;
+			
 
 			mean = sum / pointsNum;
 			float accum = 0.0;
@@ -481,7 +482,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
 			
 			if (T > 2.9768 || T < -2.9768) continue;//T检验法，a = 0.01 -> 2.9768
-			count_T++;
+			count_T++; p[x - 1] = 0;
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
 			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
@@ -492,10 +493,10 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 		}
 	}
 
-	//findSeed(survivePoint, seedPoint, tempW, tempH);
+	findSeed(survivePoint, seedPoint, tempW, tempH);
+	LSS(src, templat, seedPoint, TargetPoint);
 
-	//LSS(src, templat, seedPoint, TargetPoint);
-	BianLi(src, templat, survivePoint, TargetPoint);
+	//BianLi(src, templat, survivePoint, TargetPoint);
 
 	t = ((double)getTickCount() - t) / getTickFrequency(); //获得时间，单位是秒
 	//获取此程序段开始执行时间
@@ -503,8 +504,8 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 
 	cout << count1 << "  " << count2 << "  " << count3 << "  " << count4 << "  " << count5 << "  " << count_T << endl;
 
-	//imshow("result", result);
-	//cvWaitKey(0);
+	imshow("result", result);
+	cvWaitKey(0);
 
 	if (findFlag)
 		return 1;
@@ -570,12 +571,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data3\\mold\\mold.png", 0);
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data1\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data3\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
@@ -624,7 +625,7 @@ int main()
 		TargetPoint.clear();
 
 		imshow(filename, srcResult);
-		imwrite("a.png", srcResult);
+		//imwrite("a.png", srcResult);
 		cvWaitKey(0);
 
 	}
