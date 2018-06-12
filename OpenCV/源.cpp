@@ -564,7 +564,23 @@ bool MyTemplateMatch(Mat src, Mat templat, vector<Point2i> &TargetPoint, Point o
 	return 1;
 }
 
+bool SSDAMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint) 
+{
+	int resultW = src.cols - templat.cols + 1;
+	int resultH = src.rows - templat.rows + 1;
 
+	int tempW = templat.cols;
+	int tempH = templat.rows;
+
+	int *Sline, *Tline, *sline;
+
+	for (int y = 0; y < resultH; y++)
+		Sline = src.ptr<int>(y);
+		for (int x = 0; x < resultW; x++) 
+		{
+			
+		}
+}
 
 int main()
 {
