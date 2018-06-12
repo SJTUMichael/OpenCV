@@ -410,19 +410,19 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			sum = 0;
 			mean = 0;
 			pass = 0;
-			for (int i = 0; i < 5; i++) {//对挑选出来的15个点求比例
+			for (int i = 0; i < 3; i++) {//对挑选出来的15个点求比例
 
 				//pointIntegral = srcIntegral.at<int>(y + calculatePoint[i].y, x + calculatePoint[i].x) + srcIntegral.at<int>(y - 1, x - 1) - srcIntegral.at<int>(y + calculatePoint[i].y, x - 1) - srcIntegral.at<int>(y - 1, x + calculatePoint[i].x);
 				pointIntegral = Line5[x + tempW - i * tempW_5] + Line0[x - 1] - Line5[x - 1] - Line0[x + tempW - i * tempW_5];
 				ratio[i] = pointIntegral / tempPoint[i];//上式点（x,y）是包含在待计算图像中的左上角点
-				if (ratio[i] > 1.25 || ratio[i] < 0.75) {
+				if (ratio[i] > 1.1 || ratio[i] < 0.9) {
 					pass = 1;
 					break;
 				}
 				sum += ratio[i];	
 			}
 			
-			if (pass)   continue;// count1++; 
+			if (pass)   continue; p[x - 1] = 0;// count1++; 
 
 			for (int i = 0; i < 4; i++) {//对挑选出来的15个点求比例
 
@@ -482,7 +482,7 @@ bool wxyMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 			float T = (mean - 1)*sqrt(pointsNum*(pointsNum - 1) / accum);
 			
 			if (T > 2.9768 || T < -2.9768) continue;//T检验法，a = 0.01 -> 2.9768
-			count_T++; p[x - 1] = 0;
+			count_T++; 
 			//cout << T <<Point(x,y) << endl;
 			findFlag = 1;
 			//p[x - 1] = accumHMV(srcIntegral, tempIntegral, Point(x, y));
@@ -571,12 +571,12 @@ int main()
 	Mat src0, srcResult, templat, src, result; // result用来存放结果，src0为原图像，src为扩展边界后图像
 	char filename[100];
 	//srcResult = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data1\\0.png", 1);  //用来显示 
-	templat = imread("C:\\Users\\Mark\\Desktop\\测试素材\\data3\\mold\\mold.png", 0);
+	templat = imread("C:\\Users\\Mark\\Desktop\\模板.png", 0);//C:\\Users\\Mark\\Desktop\\测试素材\\data2\\mold\\mold.png
 	
 
 	for (unsigned int i = 0; i <= 16; ++i)
 	{
-		sprintf(filename, "C:\\Users\\Mark\\Desktop\\测试素材\\data3\\%d.png", i);//"C:\\Users\\Mark\\Desktop\\原图像.png"
+		sprintf(filename, "C:\\Users\\Mark\\Desktop\\原图像.png", i);//""C:\\Users\\Mark\\Desktop\\测试素材\\data2\\效率对比\\%d.png
 		src = imread(filename, IMREAD_GRAYSCALE);
 
 		if (src.empty() || templat.empty())
