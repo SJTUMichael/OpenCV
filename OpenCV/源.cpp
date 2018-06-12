@@ -575,11 +575,23 @@ bool SSDAMatchTemplate(Mat src, Mat templat, vector<Point2i> &TargetPoint)
 	int *Sline, *Tline, *sline;
 
 	for (int y = 0; y < resultH; y++)
+	{
 		Sline = src.ptr<int>(y);
-		for (int x = 0; x < resultW; x++) 
+		for (int x = 0; x < resultW; x++)
 		{
-			
+			for (int m = 0; m < tempH; m++)
+			{
+				sline = src.ptr<int>(y+m);
+				Tline = templat.ptr<int>(m);
+				for (int n; n < tempW; n++)
+				{
+
+				}
+			}
+
+
 		}
+	}
 }
 
 int main()
